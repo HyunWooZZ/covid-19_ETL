@@ -1,2 +1,4 @@
 .env
 /logs
+/dags/config/config.py
+/dags/config/__init__.py
