@@ -5,6 +5,7 @@ from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.google.cloud.transfers.local_to_gcs import LocalFilesystemToGCSOperator
 from config.config import project_id, staging_dataset, dwh_dataset, gs_bucket
+from airflow.providers.google.cloud.sensors.gcs import GCSObjectExistenceSensor
 
 from datetime import datetime, timedelta
 
@@ -28,7 +29,7 @@ with DAG('Covid-19_ETL',
     default_args=default_args,
     schedule_interval="@daily",
     concurrency=5,
-    catchup=True) as dag:
+    catchup=False) as dag:
 
     start_pipeline = DummyOperator(
     task_id = 'start_pipeline'
@@ -37,17 +38,25 @@ with DAG('Covid-19_ETL',
     download_csv = BashOperator(
         do_xcom_push=False,
         task_id="download_csv",
-        bash_command= "wget https://covid.ourworldindata.org/data/owid-covid-data.csv -P /opt/airflow/plugins"
+        bash_command="wget https://covid.ourworldindata.org/data/owid-covid-data.csv -P /opt/airflow/plugins"
     )
 
     local_to_gcs = LocalFilesystemToGCSOperator(
-        gcp_conn_id='local_to_gcs',
+        task_id='local_to_gcs',
+        gcp_conn_id="gcs_conn_id",
         src='/opt/airflow/plugins/owid-covid-data.csv',
-        dst='covid-19.csv'
+        dst='covid-19.csv',
         bucket=gs_bucket
     )
 
-    start_pipeline >> download_csv >> local_to_gcs
+    check_gcs_file = GCSObjectExistenceSensor(
+        task_id='check_gcs_file',
+        bucket=gs_bucket,
+        google_cloud_conn_id="gcs_conn_id",
+        object='covid-19.csv'
+    )
+
+    start_pipeline >> download_csv >> local_to_gcs >> check_gcs_file
 
 
 
