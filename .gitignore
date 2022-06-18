@@ -2,3 +2,6 @@
 /logs
 /dags/config/config.py
 /dags/config/__init__.py
+/plugins/owid-covid-data.csv
+/dags/__pycache__
+/dags/config/__pycache__

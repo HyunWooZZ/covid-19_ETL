@@ -35,11 +35,7 @@ with DAG('Covid-19_ETL',
     task_id = 'start_pipeline'
     )
 
-    download_csv = BashOperator(
-        do_xcom_push=False,
-        task_id="download_csv",
-        bash_command="wget https://covid.ourworldindata.org/data/owid-covid-data.csv -P /opt/airflow/plugins"
-    )
+
 
     local_to_gcs = LocalFilesystemToGCSOperator(
         task_id='local_to_gcs',
