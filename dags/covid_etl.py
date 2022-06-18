@@ -6,6 +6,7 @@ from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.google.cloud.transfers.local_to_gcs import LocalFilesystemToGCSOperator
 from config.config import project_id, staging_dataset, dwh_dataset, gs_bucket
 from airflow.providers.google.cloud.sensors.gcs import GCSObjectExistenceSensor
+from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
 
 from datetime import datetime, timedelta
 
@@ -35,7 +36,11 @@ with DAG('Covid-19_ETL',
     task_id = 'start_pipeline'
     )
 
-
+    download_csv = BashOperator(
+        do_xcom_push=False,
+        task_id="download_csv",
+        bash_command="wget https://covid.ourworldindata.org/data/owid-covid-data.csv -O /opt/airflow/plugins/owid-covid-data.csv"
+    )
 
     local_to_gcs = LocalFilesystemToGCSOperator(
         task_id='local_to_gcs',
@@ -52,7 +57,19 @@ with DAG('Covid-19_ETL',
         object='covid-19.csv'
     )
 
-    start_pipeline >> download_csv >> local_to_gcs >> check_gcs_file
+    load_to_bigquery = GCSToBigQueryOperator(
+        task_id='load_to_bigquery',
+        gcp_conn_id="gcs_conn_id",
+        bucket=gs_bucket,
+        source_objects=['covid-19.csv'],
+        destination_project_dataset_table=f"{staging_dataset}.covid_data",
+        source_format='csv',
+        autodetect=True,
+        skip_leading_rows=1,
+        write_disposition='WRITE_TRUNCATE'
+    )
+
+    start_pipeline >> download_csv >> local_to_gcs >> check_gcs_file >> load_to_bigquery
 
 
 
