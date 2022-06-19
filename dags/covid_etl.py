@@ -87,7 +87,11 @@ with DAG('Covid-19_ETL',
 
     )
 
-    start_pipeline >> download_csv >> local_to_gcs >> check_gcs_file >> load_to_bigquery >> build_data_mart
+    end_pipeline = DummyOperator(
+        task_id = 'end_pipeline'
+    )
+
+    start_pipeline >> download_csv >> local_to_gcs >> check_gcs_file >> load_to_bigquery >> build_data_mart >> end_pipeline
 
 
 
