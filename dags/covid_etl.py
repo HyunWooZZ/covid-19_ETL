@@ -4,11 +4,12 @@ from airflow.utils.task_group import TaskGroup
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.google.cloud.transfers.local_to_gcs import LocalFilesystemToGCSOperator
-from config.config import project_id, staging_dataset, dwh_dataset, gs_bucket
 from airflow.providers.google.cloud.sensors.gcs import GCSObjectExistenceSensor
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 
 from datetime import datetime, timedelta
+from config.config import project_id, staging_dataset, dwh_dataset, gs_bucket
 
 default_args = {
     'owner': 'HyunWoo Oh',
@@ -69,7 +70,25 @@ with DAG('Covid-19_ETL',
         write_disposition='WRITE_TRUNCATE'
     )
 
-    start_pipeline >> download_csv >> local_to_gcs >> check_gcs_file >> load_to_bigquery
+    build_data_mart = BigQueryInsertJobOperator(
+        task_id="build_data_mart",
+        gcp_conn_id="gcs_conn_id",
+        configuration={
+            "query":{
+                "query": "{% include './sql/covid.sql' %}",
+                "useLegacySql": False,
+            }
+        },
+        params={
+            'project_id': project_id,
+            'staging_dataset': staging_dataset,
+            'dwh_dataset': dwh_dataset
+            },
+
+    )
+
+    start_pipeline >> download_csv >> local_to_gcs >> check_gcs_file >> load_to_bigquery >> build_data_mart
+
 
 
 
