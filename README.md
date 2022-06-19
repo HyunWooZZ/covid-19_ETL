@@ -3,7 +3,7 @@
 ### Project Summary
 This project extracts covid data provided by Our World in Data and creates cloud-data-lake on Google Cloud Platform.
 I want to build data-warehouse to find important information about covid-19.
-I believe that this project will help someone to find covid-19 data in south korea.
+I believe that this project will help someone who want to build data warehouse about covid-19.
 
 
 ### Data Source
